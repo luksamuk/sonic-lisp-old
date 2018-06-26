@@ -62,6 +62,7 @@
 
 (defgeneric update-player-animation (player delta-time))
 (defgeneric update-player-actions (player delta-time))
+(defgeneric update-player-movement (player delta-time))
 (defgeneric update-player (player delta-time))
 (defgeneric draw-player (player))
 
@@ -127,7 +128,11 @@
 		      (and (< x-speed (- (get-default :decel)))
 			   (pressing-p :right))))
 	     (setf (state player) :skid)
-	     (gamekit:play-sound :sfx-skidding))
+	     ;; Skidding sound effect can be irritating if
+	     ;; triggered at low speeds
+	     (unless (> (abs x-speed)
+			(* 10.0 60))
+	       (gamekit:play-sound :sfx-skidding)))
 	    ;; Reset state when stopped skidding, or when
 	    ;; changing sides while skidding
 	    ((and (eq state :skid)
@@ -144,102 +149,66 @@
 		   (get-default :min-jump)))))))
 
 
-
-;; (defmethod update-player-actions ((player player) delta-time)
-;;   (when (and (ground player)
-;; 	     (= (gamekit:x (player-spd player)) 0))
-;;     ;; Look up
-;;     (when (pressing-p :up)
-;;       (setf (state player) :look-up))
-;;     ;; Crouch down
-;;     (when (pressing-p :down)
-;;       (setf (state player) :crouch)))
-;;   ;; Stop looking up or grounching down
-;;   (when (and (or (eq (state player) :look-up)
-;; 		 (eq (state player) :crouch))
-;; 	     (not (pressing-p :up))
-;; 	     (not (pressing-p :down)))
-;;     (setf (state player) :none))
-;;   ;; Jump
-;;   (when (and (ground player)
-;; 	     (not (eq (state player) :crouch))
-;; 	     (pressed-p :a))
-;;     (incf (gamekit:y (player-spd player))
-;; 	  (get-default :jump-str))
-;;     (setf (ground player) nil
-;; 	  (state player) :jump)
-;;     (gamekit:play-sound :sfx-jump))
-;;   ;; Short jump
-;;   (when (and (eq (state player) :jump)
-;; 	     (not (pressing-p :a))
-;; 	     (> (gamekit:y (player-spd player))
-;; 		(get-default :min-jump)))
-;;     (setf (gamekit:y (player-spd player))
-;; 	  (get-default :min-jump)))
-;;   ;; Skidding
-;;   (when (and (ground player)
-;; 	     (eq (state player) :none))
-;;     (let ((x-speed (gamekit:x (player-spd player))))
-;;       (when (or (and (> x-speed (get-default :decel))
-;; 		     (pressing-p :left))
-;; 		(and (< x-speed (- (get-default :decel)))
-;; 		     (pressing-p :right)))
-;; 	(setf (state player) :skid)
-;; 	(gamekit:play-sound :sfx-skidding))))
-;;   (when (and (eq (state player) :skid)
-;; 	     (or (and (not (pressing-p :left))
-;; 		      (not (pressing-p :right)))
-;; 		 (= (gamekit:x (player-spd player)) 0)))
-;;     ;; stop skidding when not pressing buttons
-;;     ;; also stop skidding when switching sides
-;;     (setf (state player) :none)
-;;     (gamekit:stop-sound :sfx-skidding)))
-
-
+(defmethod update-player-movement ((player player) delta-time)
+  (let ((x-speed (gamekit:x (player-spd player)))
+	(y-speed (gamekit:y (player-spd player)))
+	(on-ground (ground player))
+	(state (state player)))
+    ;;     Acceleration
+    (when (not (or (eq state :look-up)
+		    (eq state :crouch)
+		    (eq state :skid)))
+	   (cond ((pressing-p :right)
+		  (setf (direction player) 1)
+		  (incf (gamekit:x (player-spd player))
+			(* (get-default :accel)
+			   90.0
+			   delta-time)))
+		 ((pressing-p :left)
+		  (setf (direction player) -1)
+		  (decf (gamekit:x (player-spd player))
+			(* (get-default :accel)
+			   90.0
+			   delta-time)))))
+    ;; Deceleration
+    (when (or (and on-ground
+		   (not (or (pressing-p :left)
+			    (pressing-p :right))))
+	      ;; Also apply acceleration when skidding
+	      (eq state :skid))
+      ;; When skidding, deceleration is stronger
+      (let* ((deceleration-factor
+	      (if (eq state :skid) 60 10))
+	     (deceleration-value (* (if (> x-speed 0) -1 1)
+				    (get-default :decel)
+				    deceleration-factor
+				    delta-time)))
+	(setf (gamekit:x (player-spd player))
+	      ;; If deceleration is gonna make us cross
+	      ;; the 0.0 line, we just need a full stop
+	      (cond ((<= (abs x-speed)
+			 (get-default :decel))
+		     0.0)
+		    ;; Else we just apply deceleration accordingly.
+		    ;; Was moving right, decelerating
+		    (t (+ x-speed deceleration-value))))))
+    ;; Gravity
+    (unless on-ground
+      (setf (gamekit:y (player-spd player))
+	    (- y-speed
+	       (* (get-default :gravity)
+		  60
+		  delta-time))))))
+				
+		       
 
 (defmethod update-player ((player player) delta-time)
   ;; Animation
   (update-player-animation player delta-time)
   ;; Actions
   (update-player-actions player delta-time)
-  ;; Acceleration
-  (when (and (not (eq (state player) :look-up))
-	     (not (eq (state player) :crouch))
-	     (not (eq (state player) :skid)))
-    (when (pressing-p :right)
-      (setf (direction player) 1)
-      (incf (gamekit:x (player-spd player))
-	    (* (get-default :accel)
-	       90.0
-	       delta-time)))
-    (when (pressing-p :left)
-      (setf (direction player) -1)
-      (decf (gamekit:x (player-spd player))
-	    (* (get-default :accel)
-	       90.0
-	       delta-time))))
-  ;; Deceleration
-  (when (or (and (ground player)
-		 (not (pressing-p :left))
-		 (not (pressing-p :right)))
-	    (eq (state player) :skid))
-    (let ((x-speed (gamekit:x (player-spd player))))
-      (setf (gamekit:x (player-spd player))
-	    (if (<= (abs x-speed)
-		    (get-default :decel))
-	      0.0
-	      (if (> x-speed 0)
-		  (- x-speed (* (get-default :decel)
-				(if (eq (state player) :skid) 60 10)
-				delta-time))
-		  (+ x-speed (* (get-default :decel)
-				(if (eq (state player) :skid) 60 10)
-				delta-time)))))))
-  ;; Gravity
-  (unless (ground player)
-    (let ((y-speed (gamekit:y (player-spd player))))
-      (setf (gamekit:y (player-spd player))
-	    (- y-speed (* (get-default :gravity) 60 delta-time)))))
+  ;; Movement
+  (update-player-movement player delta-time)
   ;; Small test code for a fake ground detection.
   ;; Remove this later.
   (when (and (< (gamekit:y (player-pos player)) 100)
