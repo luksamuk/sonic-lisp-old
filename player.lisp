@@ -89,54 +89,111 @@
 
 
 (defmethod update-player-actions ((player player) delta-time)
-  (when (and (ground player)
-	     (= (gamekit:x (player-spd player)) 0))
-    ;; Look up
-    (when (pressing-p :up)
-      (setf (state player) :look-up))
-    ;; Crouch down
-    (when (pressing-p :down)
-      (setf (state player) :crouch)))
-  ;; Stop looking up or grounching down
-  (when (and (or (eq (state player) :look-up)
-		 (eq (state player) :crouch))
-	     (not (pressing-p :up))
-	     (not (pressing-p :down)))
-    (setf (state player) :none))
-  ;; Jump
-  (when (and (ground player)
-	     (not (eq (state player) :crouch))
-	     (pressed-p :a))
-    (incf (gamekit:y (player-spd player))
-	  (get-default :jump-str))
-    (setf (ground player) nil
-	  (state player) :jump)
-    (gamekit:play-sound :sfx-jump))
-  ;; Short jump
-  (when (and (eq (state player) :jump)
-	     (not (pressing-p :a))
-	     (> (gamekit:y (player-spd player))
-		(get-default :min-jump)))
-    (setf (gamekit:y (player-spd player))
-	  (get-default :min-jump)))
-  ;; Skidding
-  (when (and (ground player)
-	     (eq (state player) :none))
-    (let ((x-speed (gamekit:x (player-spd player))))
-      (when (or (and (> x-speed (get-default :decel))
-		     (pressing-p :left))
-		(and (< x-speed (- (get-default :decel)))
-		     (pressing-p :right)))
-	(setf (state player) :skid)
-	(gamekit:play-sound :sfx-skidding))))
-  (when (and (eq (state player) :skid)
-	     (or (and (not (pressing-p :left))
-		      (not (pressing-p :right)))
-		 (= (gamekit:x (player-spd player)) 0)))
-    ;; stop skidding when not pressing buttons
-    ;; also stop skidding when switching sides
-    (setf (state player) :none)
-    (gamekit:stop-sound :sfx-skidding)))
+  (let ((x-speed (gamekit:x (player-spd player)))
+	(y-speed (gamekit:y (player-spd player)))
+	(on-ground (ground player))
+	(state (state player)))
+    ;; Ground player actions
+    (if on-ground
+      ;;     Crouch down
+      (cond ((and (eq state :none)
+		  (= x-speed 0)
+		  (pressing-p :down))
+	     (setf (state player) :crouch))
+	    ;; Look up
+	    ((and (eq state :none)
+		  (= x-speed 0)
+		  (pressing-p :up))
+	     (setf (state player) :look-up))
+	    ;; Reset state to normal when not looking
+	    ;; up or crouching down anymore
+	    ((and (or (eq state :look-up)
+		      (eq state :crouch))
+		  (and (not (pressing-p :down))
+		       (not (pressing-p :up))))
+	     (setf (state player) :none))
+	    ;; Jump
+	    ((and (not (eq state :crouch))
+		  (pressed-p :a))
+	     (incf (gamekit:y (player-spd player))
+		   (get-default :jump-str))
+	     (setf (ground player) nil
+		   (state player) :jump)
+	     (gamekit:play-sound :sfx-jump))
+	    ;; Skidding
+	    ((and (eq state :none)
+		  (or (and (> x-speed (get-default :decel))
+			   (pressing-p :left))
+		      (and (< x-speed (- (get-default :decel)))
+			   (pressing-p :right))))
+	     (setf (state player) :skid)
+	     (gamekit:play-sound :sfx-skidding))
+	    ;; Reset state when stopped skidding, or when
+	    ;; changing sides while skidding
+	    ((and (eq state :skid)
+		  (or (and (not (pressing-p :left))
+			   (not (pressing-p :right)))
+		      (= x-speed 0)))
+	     (setf (state player) :none)))
+      ;; Air player actions
+      ;;    Short jump
+      (cond ((and (eq state :jump)
+		  (not (pressing-p :a))
+		  (> y-speed (get-default :min-jump)))
+	     (setf (gamekit:y (player-spd player))
+		   (get-default :min-jump)))))))
+
+
+
+;; (defmethod update-player-actions ((player player) delta-time)
+;;   (when (and (ground player)
+;; 	     (= (gamekit:x (player-spd player)) 0))
+;;     ;; Look up
+;;     (when (pressing-p :up)
+;;       (setf (state player) :look-up))
+;;     ;; Crouch down
+;;     (when (pressing-p :down)
+;;       (setf (state player) :crouch)))
+;;   ;; Stop looking up or grounching down
+;;   (when (and (or (eq (state player) :look-up)
+;; 		 (eq (state player) :crouch))
+;; 	     (not (pressing-p :up))
+;; 	     (not (pressing-p :down)))
+;;     (setf (state player) :none))
+;;   ;; Jump
+;;   (when (and (ground player)
+;; 	     (not (eq (state player) :crouch))
+;; 	     (pressed-p :a))
+;;     (incf (gamekit:y (player-spd player))
+;; 	  (get-default :jump-str))
+;;     (setf (ground player) nil
+;; 	  (state player) :jump)
+;;     (gamekit:play-sound :sfx-jump))
+;;   ;; Short jump
+;;   (when (and (eq (state player) :jump)
+;; 	     (not (pressing-p :a))
+;; 	     (> (gamekit:y (player-spd player))
+;; 		(get-default :min-jump)))
+;;     (setf (gamekit:y (player-spd player))
+;; 	  (get-default :min-jump)))
+;;   ;; Skidding
+;;   (when (and (ground player)
+;; 	     (eq (state player) :none))
+;;     (let ((x-speed (gamekit:x (player-spd player))))
+;;       (when (or (and (> x-speed (get-default :decel))
+;; 		     (pressing-p :left))
+;; 		(and (< x-speed (- (get-default :decel)))
+;; 		     (pressing-p :right)))
+;; 	(setf (state player) :skid)
+;; 	(gamekit:play-sound :sfx-skidding))))
+;;   (when (and (eq (state player) :skid)
+;; 	     (or (and (not (pressing-p :left))
+;; 		      (not (pressing-p :right)))
+;; 		 (= (gamekit:x (player-spd player)) 0)))
+;;     ;; stop skidding when not pressing buttons
+;;     ;; also stop skidding when switching sides
+;;     (setf (state player) :none)
+;;     (gamekit:stop-sound :sfx-skidding)))
 
 
 

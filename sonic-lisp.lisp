@@ -110,3 +110,6 @@
 
 (defun stop ()
   (gamekit:stop))
+
+(defun reset ()
+  (reset-sonic))

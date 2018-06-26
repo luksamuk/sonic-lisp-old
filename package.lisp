@@ -7,4 +7,5 @@
 (defpackage #:sonic-lisp
   (:use #:cl)
   (:export #:start
-	   #:stop))
+	   #:stop
+	   #:reset))
