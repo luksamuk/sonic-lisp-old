@@ -154,7 +154,7 @@
 	(y-speed (gamekit:y (player-spd player)))
 	(on-ground (ground player))
 	(state (state player)))
-    ;;     Acceleration
+    ;; Acceleration
     (when (not (or (eq state :look-up)
 		    (eq state :crouch)
 		    (eq state :skid)))
@@ -177,8 +177,10 @@
 	      ;; Also apply acceleration when skidding
 	      (eq state :skid))
       ;; When skidding, deceleration is stronger
-      (let* ((deceleration-factor
-	      (if (eq state :skid) 60 10))
+      (let* ((deceleration-factor (if (eq state :skid) 60 10))
+	     ;; Pre-calculate the acceleration value depending
+	     ;; on the direction we're moving (not the direction
+	     ;; we're necessarily facing)
 	     (deceleration-value (* (if (> x-speed 0) -1 1)
 				    (get-default :decel)
 				    deceleration-factor
@@ -190,7 +192,6 @@
 			 (get-default :decel))
 		     0.0)
 		    ;; Else we just apply deceleration accordingly.
-		    ;; Was moving right, decelerating
 		    (t (+ x-speed deceleration-value))))))
     ;; Gravity
     (unless on-ground
