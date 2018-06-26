@@ -7,6 +7,7 @@
 (in-package #:sonic-lisp)
 
 (defvar +black+ (gamekit:vec4 0 0 0 1))
+(defvar +white+ (gamekit:vec4 1 1 1 1))
 (defvar +origin+ (gamekit:vec2 0 0))
 
 (defvar *dt* 0)
@@ -44,3 +45,4 @@
 ;;(gamekit:define-image :bg-layer4 "bg/level6/layer4.png")
 ;;(gamekit:define-image :bg-layer5 "bg/level6/layer5.png")
 
+(gamekit:define-font :gohufont "fonts/gohufont-uni-11.ttf")

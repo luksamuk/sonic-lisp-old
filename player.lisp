@@ -130,8 +130,7 @@
 	     (setf (state player) :skid)
 	     ;; Skidding sound effect can be irritating if
 	     ;; triggered at low speeds
-	     (unless (> (abs x-speed)
-			(* 10.0 60))
+	     (unless (<= (abs x-speed) 3.0)
 	       (gamekit:play-sound :sfx-skidding)))
 	    ;; Reset state when stopped skidding, or when
 	    ;; changing sides while skidding
@@ -224,7 +223,28 @@
 	(gamekit:y (player-pos player))
 	(+ (gamekit:y (player-pos player)) (gamekit:y (player-spd player)))))
 
+
+(defmacro debugger-text-draw (string position)
+  `(gamekit:draw-text ,string ,position
+		      :fill-color +white+
+		      :font (gamekit:make-font :gohufont 11)))
+
 (defmethod draw-player ((player player))
+  (gamekit:with-pushed-canvas ()
+    (gamekit:translate-canvas 10 340)
+    (debugger-text-draw (format nil "pos >> ~a ~a"
+				(floor (gamekit:x (player-pos player)))
+				(floor (gamekit:y (player-pos player))))
+			(gamekit:vec2 0 0))
+    (debugger-text-draw (format nil "spd >> ~a ~a"
+				(floor (gamekit:x (player-spd player)))
+				(floor (gamekit:y (player-spd player))))
+			(gamekit:vec2 0 -10))
+    (debugger-text-draw (format nil "fps >> ~a"
+				(if (not (= *dt* 0))
+				    (floor (/ 1 *dt*))
+				    0))
+			(gamekit:vec2 0 -20)))
   (gamekit:with-pushed-canvas ()
     (gamekit:translate-canvas (gamekit:x (player-pos player))
 			      (gamekit:y (player-pos player)))
