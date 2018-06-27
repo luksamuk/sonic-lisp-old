@@ -82,6 +82,7 @@
 	   (:look-up :look-up)
 	   (:crouch :crouch)
 	   (:skid :skid)
+	   ((:spindash :roll) :roll)
 	   (otherwise :keep))
 	 ;; On air
 	 (case (state player)
@@ -115,6 +116,7 @@
 	     (setf (state player) :none))
 	    ;; Jump
 	    ((and (not (eq state :crouch))
+		  (not (eq state :spindash))
 		  (pressed-p :a))
 	     (incf (gamekit:y (player-spd player))
 		   (get-default :jump-str))
@@ -138,7 +140,26 @@
 		  (or (and (not (pressing-p :left))
 			   (not (pressing-p :right)))
 		      (= x-speed 0)))
-	     (setf (state player) :none)))
+	     (setf (state player) :none))
+	    ;; Begin spindash
+	    ((and (eq state :crouch)
+		  (pressed-p :a))
+	     (setf (state player) :spindash)
+	     (gamekit:play-sound :sfx-spindash))
+	    ;; Release spindash when not holding
+	    ;; down anymore
+	    ((and (eq state :spindash)
+		  (not (pressing-p :down)))
+	     (setf (state player) :roll
+		   (gamekit:x (player-spd player)) (* 8 (direction player)))
+	     (gamekit:play-sound :sfx-release))
+	    ;; Uncurl after rolling
+	    ((and (eq state :roll)
+		  (< (abs x-speed) (get-default :unroll-min-x)))
+	     (setf (state player) :none
+		   (gamekit:x (player-spd player)) 0))
+	    ;; TODO: Spindash revolutions
+	    )
       ;; Air player actions
       ;;    Short jump
       (cond ((and (eq state :jump)
@@ -155,20 +176,21 @@
 	(state (state player)))
     ;; Acceleration
     (when (not (or (eq state :look-up)
-		    (eq state :crouch)
-		    (eq state :skid)))
-	   (cond ((pressing-p :right)
-		  (setf (direction player) 1)
-		  (incf (gamekit:x (player-spd player))
-			(* (get-default :accel)
-			   90.0
-			   delta-time)))
-		 ((pressing-p :left)
-		  (setf (direction player) -1)
-		  (decf (gamekit:x (player-spd player))
-			(* (get-default :accel)
-			   90.0
-			   delta-time)))))
+		   (eq state :crouch)
+		   (eq state :spindash)
+		   (eq state :skid)))
+      (cond ((pressing-p :right)
+	     (setf (direction player) 1)
+	     (incf (gamekit:x (player-spd player))
+		   (* (get-default :accel)
+		      90.0
+		      delta-time)))
+	    ((pressing-p :left)
+	     (setf (direction player) -1)
+	     (decf (gamekit:x (player-spd player))
+		   (* (get-default :accel)
+		      90.0
+		      delta-time)))))
     ;; Deceleration
     (when (or (and on-ground
 		   (not (or (pressing-p :left)
