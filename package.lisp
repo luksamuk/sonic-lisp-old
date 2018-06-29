@@ -6,6 +6,7 @@
 
 (defpackage #:sonic-lisp
   (:use #:cl)
-  (:export #:start
+  (:export #:sonic-game
+	   #:start
 	   #:stop
 	   #:reset))

@@ -17,3 +17,13 @@
 	       (:file "animation")
 	       (:file "player")
                (:file "sonic-lisp")))
+
+(asdf:defsystem #:sonic-lisp/bundle
+    :description "Bundles sonic-lisp into a standalone executable"
+    :author "Lucas Vieira <lucasvieira@lisp.com.br>"
+    :license "MIT"
+    :version "0.0.1"
+    :serial t
+    :depends-on (#:trivial-gamekit/distribution #:sonic-lisp)
+    :components ((:file "bundle")))
+
