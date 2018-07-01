@@ -13,6 +13,7 @@
   :depends-on (#:trivial-gamekit)
   :components ((:file "package")
 	       (:file "global")
+	       (:file "debugger")
 	       (:file "input")
 	       (:file "animation")
 	       (:file "player")

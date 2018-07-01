@@ -11,6 +11,7 @@
 (defvar +origin+ (gamekit:vec2 0 0))
 
 (defvar *dt* 0)
+(defvar *fps* 60)
 (defvar *last-checked-time* (get-internal-real-time))
 
 (defvar *game-properties*

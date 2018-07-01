@@ -80,10 +80,13 @@
   )
 
 (defun update-delta-time ()
+  ;; Update real delta-time
   (let ((current-time (get-internal-real-time)))
     (setf *dt* (/ (- current-time *last-checked-time*)
 		     internal-time-units-per-second)
-	  *last-checked-time* current-time)))
+	  *last-checked-time* current-time
+	  *fps* (+ (* *fps* 0.99)
+		   (* (/ 1 *dt*) (- 1.0 0.99))))))
 
 (defmethod gamekit:act ((app sonic-game))
   (update-delta-time)

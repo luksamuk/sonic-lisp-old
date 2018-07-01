@@ -264,7 +264,7 @@
 			(gamekit:vec2 0 -10))
     (debugger-text-draw (format nil "fps >> ~a"
 				(if (not (= *dt* 0))
-				    (floor (/ 1 *dt*))
+				    (floor *fps*)
 				    0))
 			(gamekit:vec2 0 -20)))
   (gamekit:with-pushed-canvas ()
